@@ -16,4 +16,4 @@ ADD . /solution/
 
 RUN chmod +x /solution/runner.py
 
-CMD [runner.py]
+CMD ["python", "./runner.py"]

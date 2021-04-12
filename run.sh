@@ -1,0 +1,1 @@
+docker run dwh-challange python runner.py

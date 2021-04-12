@@ -5,12 +5,15 @@ import petl as etl
 import pandas as pd
 import numpy as np
 
-from utils import TimestampConverter
+from .utils import TimestampConverter
 
 
-BASE_DIR = '../data/'
-pd.set_option('display.max_rows', 50)
-# pd.set_option('display.max_columns', None)
+BASE_DIR = './data/'
+pd.set_option('display.max_rows', None)
+pd.set_option('display.max_columns', None)
+pd.set_option('display.width', 1000)
+pd.set_option('display.colheader_justify', 'center')
+pd.set_option('display.precision', 2)
 
 
 def open_json_file(file_name):
@@ -86,54 +89,48 @@ def print_all(record, column='ts'):
     )
 
 
-accounts = extractor('accounts')
-unpacked_accounts = unpacked_json(accounts)
-cards = extractor('cards')
-unpacked_cards = unpacked_json(cards)
-savings_accounts = extractor('savings_accounts')
-unpacked_savings_accounts = unpacked_json(savings_accounts)
-
-# print_all(unpacked_accounts)
-# print_all(recovered_ids(unpacked_cards, 'card_id'))
-# print_all(recovered_ids(unpacked_savings_accounts, 'savings_account_id'))
-
-pandas_accounts = etl.todataframe(recovered_ids(unpacked_accounts, 'account_id'))
-pandas_cards = etl.todataframe(recovered_ids(unpacked_cards, 'card_id'))
-pandas_savings = etl.todataframe(recovered_ids(unpacked_savings_accounts, 'savings_account_id'))
-
-account_group_by_sa_id = pandas_accounts.groupby(
-    ['account_id', 'savings_account_id']
-).last().reset_index().loc[:, ['account_id', 'savings_account_id']]
+def get_all_data():
+    accounts = extractor('accounts')
+    unpacked_accounts = unpacked_json(accounts)
+    cards = extractor('cards')
+    unpacked_cards = unpacked_json(cards)
+    savings_accounts = extractor('savings_accounts')
+    unpacked_savings_accounts = unpacked_json(savings_accounts)
+    
+    return (
+        etl.todataframe(recovered_ids(unpacked_accounts, 'account_id')),
+        etl.todataframe(recovered_ids(unpacked_cards, 'card_id')),
+        etl.todataframe(recovered_ids(unpacked_savings_accounts, 'savings_account_id'))
+    )
 
 
-pandas_account = pandas_accounts.set_index('account_id')
-account_group_by_sa_id = account_group_by_sa_id.set_index('account_id')
-pandas_account.update(account_group_by_sa_id)
+def integrate_all_tables(accounts, cards, savings_accounts):
+    account_group_by_sa_id = accounts.groupby(
+        ['account_id', 'savings_account_id']
+    ).last().reset_index().loc[:, ['account_id', 'savings_account_id']]
 
 
-pandas_account = pandas_accounts.set_index('card_id')
-pandas_cards = pandas_cards.set_index('card_id')
-
-result = pd.merge(
-    pandas_accounts,
-    pandas_cards,
-    how='outer',
-    left_on=['ts', 'op', 'id'],
-    right_on=['ts', 'op', 'id']
-)
-
-print(result)
-
-final_result = pd.concat(
-    [result.reset_index(), pandas_savings],
-    join='outer',
-    keys='savings_account_id'
-)
+    pandas_accounts = accounts.set_index('account_id')
+    account_group_by_sa_id = account_group_by_sa_id.set_index('account_id')
+    pandas_accounts.update(account_group_by_sa_id)
 
 
-print(final_result)
+    pandas_accounts = pandas_accounts.set_index('card_id')
+    pandas_cards = cards.set_index('card_id')
 
+    result = pd.merge(
+        pandas_accounts,
+        pandas_cards,
+        how='outer',
+        left_on=['ts', 'op', 'id'],
+        right_on=['ts', 'op', 'id']
+    )
 
+    final_result = pd.concat(
+        [result.reset_index(), savings_accounts],
+        join='outer',
+        keys='savings_account_id'
+    )
 
-
+    return final_result.sort_values(by=['ts'])
 
