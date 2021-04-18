@@ -1,6 +1,6 @@
 import argparse
 
-from etl import get_all_data, integrate_all_tables
+from etl import get_all_data, integrate_all_tables, summary_all_tables
 
 
 def task_1():
@@ -18,7 +18,7 @@ def task_2():
     print('=' * 50 + " Task 2 " + '=' * 50)
     print('=' * 50 + " History " + '=' * 50)
     accounts, cards, savings_accounts = get_all_data()
-    print(integrate_all_tables(accounts, cards, savings_accounts))
+    print(summary_all_tables(accounts, cards, savings_accounts))
 
 
 def task_3():
@@ -28,11 +28,10 @@ def task_3():
     print(
         summaries[
             (
-                (summaries['credit_used'] > 0) | (summaries['balance'] > 0) | (summaries['interest_rate_percent'] > 0)
+                (summaries['credit_used'] > 0) | (summaries['balance'] > 0)
             )
         ]
-    )    
-
+    )
 
 
 if __name__ == '__main__':
